@@ -1,0 +1,30 @@
+name: Python CI
+
+on:
+  push:
+    tags: [ '*' ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python3
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.9'
+      - name: Parse tag name
+        id: meta
+        if: startsWith(github.ref, 'refs/tags/')
+        run: echo ::set-output name=tag::${GITHUB_REF/refs\/tags\//}
+      - name: Build the Docker image
+        if: startsWith(github.ref, 'refs/tags/')
+        run: docker build -t ghcr.io/xii1/movie-recommender:${{ steps.meta.outputs.tag }} .
+      - name: Login github registry
+        if: startsWith(github.ref, 'refs/tags/')
+        run: echo ${{ secrets.GITHUB_TOKEN }} | docker login https://ghcr.io -u ${{ github.repository_owner }} --password-stdin
+      - name: Push the Docker image
+        if: startsWith(github.ref, 'refs/tags/')
+        run: docker push ghcr.io/xii1/movie-recommender:${{ steps.meta.outputs.tag }}
