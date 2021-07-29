@@ -46,7 +46,7 @@ http://localhost:8080/recommender/trend/popular?genres=<string>&top=<number>
 ```bash
 http://localhost:8080/recommender/trend/rating?genres=<string>&top=<number>
 ```
-- Get predicted rating of a user
+- Get predicted rating of a user for a movie
 ```bash
 http://localhost:8080/recommender/predict/rating?userId=<number>&movieId=<number>
 ```
