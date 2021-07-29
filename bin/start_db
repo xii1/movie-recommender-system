@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
+
+MONGO_USERNAME=mongo
+MONGO_PASSWORD=mongo
+
+docker run -d --name mongodb \
+              -p 27017:27017 \
+              -v $DIR/../data:/data-import \
+              -e MONGO_INITDB_ROOT_USERNAME=$MONGO_USERNAME \
+              -e MONGO_INITDB_ROOT_PASSWORD=$MONGO_PASSWORD \
+              mongo
+
+sleep 10
+
+docker exec -it mongodb mongoimport -u $MONGO_USERNAME \
+                                    -p $MONGO_PASSWORD \
+                                    --authenticationDatabase admin \
+                                    -d samples -c tmdb_movies \
+                                    --type csv --headerline --drop \
+                                    /data-import/movies/tmdb_movies_data.csv
+
+docker exec -it mongodb mongoimport -u $MONGO_USERNAME \
+                                    -p $MONGO_PASSWORD \
+                                    --authenticationDatabase admin \
+                                    -d samples -c movies \
+                                    --type csv --headerline --drop \
+                                    /data-import/movies/movies.csv
+
+docker exec -it mongodb mongoimport -u $MONGO_USERNAME \
+                                    -p $MONGO_PASSWORD \
+                                    --authenticationDatabase admin \
+                                    -d samples -c ratings \
+                                    --type csv --headerline --drop \
+                                    /data-import/movies/ratings.csv

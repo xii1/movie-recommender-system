@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+if [ $# -eq 0 ]
+  then
+    echo "Tag version is required!"
+    exit
+fi
+
+AI_SERVICE_SCALE=1
+if [ $# -gt 1 ]
+  then
+    AI_SERVICE_SCALE=$2
+fi
+
+AI_SERVICE_TAG=$1 docker compose up -d --scale ai-service=$AI_SERVICE_SCALE
