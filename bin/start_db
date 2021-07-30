@@ -34,3 +34,10 @@ docker exec -it mongodb mongoimport -u $MONGO_USERNAME \
                                     -d samples -c ratings \
                                     --type csv --headerline --drop \
                                     /data-import/movies/ratings.csv
+
+docker exec -it mongodb mongoimport -u $MONGO_USERNAME \
+                                    -p $MONGO_PASSWORD \
+                                    --authenticationDatabase admin \
+                                    -d samples -c links \
+                                    --type csv --headerline --drop \
+                                    /data-import/movies/links.csv

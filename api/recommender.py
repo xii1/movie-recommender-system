@@ -118,4 +118,12 @@ def get_top_recommended_movies(user_id):
     if data.size == 0:
         return jsonify([])
 
-    return get_n_recommended_movies_for_user(user_id, top, data).to_json(orient='records')
+    recommended_movies = get_n_recommended_movies_for_user(user_id, top, data)
+
+    # map imdbId by links
+    imdb = list(db.links.find({'movieId': {'$in': list(recommended_movies['movieId'])}}))
+    imdb = {i['movieId']: i['imdbId'] for i in imdb}
+
+    recommended_movies['imdb_id'] = recommended_movies.apply(lambda m: imdb[m['movieId']], axis=1)
+
+    return recommended_movies.to_json(orient='records')

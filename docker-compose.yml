@@ -21,7 +21,8 @@ services:
     command: bash -c "
       mongoimport -h mongodb -u mongo -p mongo --authenticationDatabase admin -d samples -c tmdb_movies --type csv --headerline --drop /data-import/movies/tmdb_movies_data.csv
       && mongoimport -h mongodb -u mongo -p mongo --authenticationDatabase admin -d samples -c movies --type csv --headerline --drop /data-import/movies/movies.csv
-      && mongoimport -h mongodb -u mongo -p mongo --authenticationDatabase admin -d samples -c ratings --type csv --headerline --drop /data-import/movies/ratings.csv"
+      && mongoimport -h mongodb -u mongo -p mongo --authenticationDatabase admin -d samples -c ratings --type csv --headerline --drop /data-import/movies/ratings.csv
+      && mongoimport -h mongodb -u mongo -p mongo --authenticationDatabase admin -d samples -c links --type csv --headerline --drop /data-import/movies/links.csv"
 
   redis:
     image: redis:latest
