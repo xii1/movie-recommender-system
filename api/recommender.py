@@ -15,11 +15,11 @@ N_TOP_DEFAULT = 10
 def get_top_popular_movies():
     query = {}
     genres = request.args.get('genres')
+    top = request.args.get('top')
 
     if genres is not None:
         query = {'genres': {'$regex': '{}'.format(genres), '$options': 'i'}}
 
-    top = request.args.get('top')
     if not top:
         top = N_TOP_DEFAULT
     else:
@@ -39,11 +39,11 @@ def get_top_popular_movies():
 def get_top_rating_movies():
     query = {}
     genres = request.args.get('genres')
+    top = request.args.get('top')
 
     if genres is not None:
         query = {'genres': {'$regex': '{}'.format(genres), '$options': 'i'}}
 
-    top = request.args.get('top')
     if not top:
         top = N_TOP_DEFAULT
     else:
@@ -87,18 +87,27 @@ def train_rating_model():
 @recommender.route('/user/<user_id>', methods=['GET'])
 @cache.cached(timeout=300, query_string=True)
 def get_top_recommended_movies(user_id):
-    query = {}
+    user_id = int(user_id)
+
     genres = request.args.get('genres')
-
-    if genres is not None:
-        query = {'genres': {'$regex': '{}'.format(genres), '$options': 'i'}}
-
     top = request.args.get('top')
+    watched = request.args.get('watched')
+
+    genres_query = {}
+    if genres is not None:
+        genres_query = {'genres': {'$regex': '{}'.format(genres), '$options': 'i'}}
+
     if not top:
         top = N_TOP_DEFAULT
     else:
         top = int(top)
 
+    unwatched_movies_query = {}
+    if not watched or watched.lower() in ('false', 'f', '0'):
+        watched_movies = list(map(lambda m: m['movieId'], list(db.ratings.find({'userId': user_id}))))
+        unwatched_movies_query = {'movieId': {'$nin': watched_movies}}
+
+    query = {'$and': [genres_query, unwatched_movies_query]}
     movies = list(db.movies.find(query, {'_id': False}))
     data = pd.DataFrame(movies)
 

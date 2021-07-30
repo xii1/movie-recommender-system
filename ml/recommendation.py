@@ -33,8 +33,8 @@ def train_rating_model_with_svd(ratings):
     reader = Reader()
     data = Dataset.load_from_df(ratings[['userId', 'movieId', 'rating']], reader)
 
-    params = {'n_factors': np.arange(10, 20)}
-    gs = GridSearchCV(SVD, param_grid=params, measures=['rmse'], cv=5, n_jobs=-1)
+    params = {'n_factors': np.arange(95, 100)}
+    gs = GridSearchCV(SVD, param_grid=params, measures=['rmse'], cv=5)
     gs.fit(data)
 
     svd = gs.best_estimator['rmse']
