@@ -3,7 +3,7 @@ from flask import Blueprint, request, jsonify
 
 from __init__ import db, cache
 from ml.recommendation import train_rating_model_with_svd, get_n_popular_movies, \
-    get_n_rating_movies, predict_rating_with_svd, get_n_recommended_movies_for_user
+    get_n_rating_movies, predict_rating_with_svd, get_n_recommended_movies_for_user, predict_rating_with_nn
 
 recommender = Blueprint('recommender', __name__)
 
@@ -69,9 +69,13 @@ def get_predicted_rating():
         user_id = int(user_id)
         movie_id = int(movie_id)
 
+    predicted_rating = dict()
+    predicted_rating['SVD'] = predict_rating_with_svd(user_id, movie_id)
+    predicted_rating['NN Embedding'] = predict_rating_with_nn([user_id], [movie_id])[0].astype('float64')
+
     return jsonify({'userId': user_id,
                     'movieId': movie_id,
-                    'predicted_rating': predict_rating_with_svd(user_id, movie_id)
+                    'predicted_rating': predicted_rating
                     })
 
 
