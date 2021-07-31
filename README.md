@@ -38,27 +38,41 @@ These instructions will get you building and running the project on your local m
 ```
 
 ## List of APIs
+- Get list of all user's ids
+```
+http://localhost:8080/user/list
+```
+
+- Get list of all watched movies of a user
+```
+http://localhost:8080/user/<user_id>/watched?genres=<string>
+```
+
 - Get list of trending movies based on popularity (default: top=10)
 ```
 http://localhost:8080/recommender/trend/popular?genres=<string>&top=<number>
 ```
+
 - Get list of trending movies based on IMDB rating scores (default: top=10)
 ```
 http://localhost:8080/recommender/trend/rating?genres=<string>&top=<number>
 ```
+
 - Get predicted rating of a user for a movie
 ```
 http://localhost:8080/recommender/predict/rating?userId=<number>&movieId=<number>
 ```
+
 - Get list of recommended movies for a user (default: top=10, watched=false)
 ```
-http://localhost:8080/recommender/user/:user_id?genres=<string>&top=<number>&watched=[true|false]
+http://localhost:8080/recommender/user/<user_id>?genres=<string>&top=<number>&watched=[true|false]
 ```
 
 - Train again predicted rating model when add new rating data
 ```
 http://localhost:8080/recommender/train/rating
 ```
+
 - Clear cache APIs
 ```
 http://localhost:8080/caching/delete/<:key>

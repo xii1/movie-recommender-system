@@ -1,6 +1,7 @@
 flask
 flask_pymongo
 flask-caching
+flask-cors
 redis
 numpy
 pandas
