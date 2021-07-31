@@ -76,7 +76,7 @@ http://localhost:8080/recommender/train/rating
 - Clear cache APIs
 ```
 http://localhost:8080/caching/delete/<:key>
-http://localhost:8080/clear
+http://localhost:8080/caching/clear
 ```
 
 ## Run for production
