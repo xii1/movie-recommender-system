@@ -3,11 +3,36 @@ from flask import Blueprint, request, jsonify
 
 from __init__ import db, cache
 from ml.recommendation import train_rating_model_with_svd, get_n_popular_movies, \
-    get_n_rating_movies, predict_rating_with_svd, get_n_recommended_movies_for_user, predict_rating_with_nn, get_n_trending_movies
+    get_n_rating_movies, predict_rating_with_svd, get_n_recommended_movies_for_user, predict_rating_with_nn, \
+    get_n_trending_movies
 
 recommender = Blueprint('recommender', __name__)
 
 N_TOP_DEFAULT = 10
+
+
+@recommender.route('/trend/now', methods=['GET'])
+@cache.cached(timeout=300, query_string=True)
+def get_top_trending_movies():
+    query = {}
+    genres = request.args.get('genres')
+    top = request.args.get('top')
+
+    if genres is not None:
+        query = {'genres': {'$regex': '{}'.format(genres), '$options': 'i'}}
+
+    if not top:
+        top = N_TOP_DEFAULT
+    else:
+        top = int(top)
+
+    movies = list(db.tmdb_movies.find(query, {'_id': False}))
+    data = pd.DataFrame(movies)
+
+    if data.size == 0:
+        return jsonify([])
+
+    return get_n_trending_movies(data, top).to_json(orient='records')
 
 
 @recommender.route('/trend/popular', methods=['GET'])
@@ -31,8 +56,7 @@ def get_top_popular_movies():
     if data.size == 0:
         return jsonify([])
 
-    #return get_n_popular_movies(data, top).to_json(orient='records')
-    return get_n_trending_movies(data, top).to_json(orient='records')
+    return get_n_popular_movies(data, top).to_json(orient='records')
 
 
 @recommender.route('/trend/rating', methods=['GET'])

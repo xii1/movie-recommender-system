@@ -48,6 +48,11 @@ http://localhost:8080/user/list
 http://localhost:8080/user/<user_id>/watched?genres=<string>
 ```
 
+- Get list of trending movies in recent 3 years and older than 3 years based on popularity (default: top=10)
+```
+http://localhost:8080/recommender/trend/now?genres=<string>&top=<number>
+```
+
 - Get list of trending movies based on popularity (default: top=10)
 ```
 http://localhost:8080/recommender/trend/popular?genres=<string>&top=<number>
