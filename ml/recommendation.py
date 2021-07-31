@@ -25,12 +25,11 @@ def get_n_popular_movies(data, n):
 def get_n_trending_movies(data, n):
     m = data['vote_count'].quantile(QUANTILES_THRESHOLD)
     c = data['vote_average'].mean()
-    today = date.today()
     rating_movies = data.copy().loc[data['vote_count'] >= m]
     rating_movies['rating_score'] = rating_movies.apply(lambda movie: calc_weighted_rating(movie, m, c), axis=1)
-    recent_three_year_movies = rating_movies.loc[rating_movies['release_year'] >= today.year - 6]
-    older_than_three_year_movies = rating_movies.loc[rating_movies['release_year'] < today.year - 6]
-
+    # because dataset max year is 2015, recent 3 years is 2012
+    recent_three_year_movies = rating_movies.loc[rating_movies['release_year'] >= 2012]
+    older_than_three_year_movies = rating_movies.loc[rating_movies['release_year'] < 2012]
 
     mid = int(n / 2)
 
