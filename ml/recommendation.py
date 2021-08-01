@@ -6,6 +6,7 @@ from sklearn.preprocessing import MinMaxScaler, LabelEncoder
 from surprise import SVD, Reader, Dataset
 from surprise.model_selection import GridSearchCV
 from tensorflow.keras import layers, activations, models, optimizers, losses
+from datetime import date
 
 PREDICTED_RATING_SVD_MODEL_FILE = 'trained_models/recommendation/predicted_rating_svd.pkl'
 QUANTILES_THRESHOLD = 0.95
@@ -19,6 +20,24 @@ N_FACTORS = 10
 
 def get_n_popular_movies(data, n):
     return data.nlargest(n, 'popularity')[['id', 'original_title', 'genres', 'popularity', 'imdb_id']]
+
+
+def get_n_trending_movies(data, n):
+    m = data['vote_count'].quantile(QUANTILES_THRESHOLD)
+    c = data['vote_average'].mean()
+    rating_movies = data.copy().loc[data['vote_count'] >= m]
+    rating_movies['rating_score'] = rating_movies.apply(lambda movie: calc_weighted_rating(movie, m, c), axis=1)
+    # because dataset max year is 2015, recent 3 years is 2012
+    recent_three_year_movies = rating_movies.loc[rating_movies['release_year'] >= 2012]
+    older_than_three_year_movies = rating_movies.loc[rating_movies['release_year'] < 2012]
+
+    mid = int(n / 2)
+
+    recent_three_year_movies = recent_three_year_movies.nlargest(mid, 'rating_score')
+    older_than_three_year_movies = older_than_three_year_movies.nlargest(n - mid, 'rating_score')
+
+    return pd.concat([recent_three_year_movies, older_than_three_year_movies])[
+        ['id', 'original_title', 'genres', 'vote_count', 'vote_average', 'rating_score', 'imdb_id', 'release_year']]
 
 
 def get_n_rating_movies(data, n):
@@ -95,7 +114,7 @@ def train_rating_model_with_neural_network(ratings):
     merge = layers.concatenate([user_vector, movie_vector])
     layer = layers.Dropout(0.5)(merge)
 
-# add fully connected layers with dropout
+    # add fully connected layers with dropout
     layer = layers.Dense(32, activation=activations.relu)(layer)
     layer = layers.Dropout(0.5)(layer)
     layer = layers.Dense(16, activation=activations.relu)(layer)
@@ -117,7 +136,8 @@ def train_rating_model_with_neural_network(ratings):
     save_obj(movie_encoder, PREDICTED_RATING_NN_WITH_EMBEDDING_MOVIE_ENCODER_FILE)
 
     # visualization train loss / validate loss
-    visualize([{"train": history.history["loss"], "validate": history.history["val_loss"]}], ["Model Trained"], ["epoch"], ["loss"])
+    visualize([{"train": history.history["loss"], "validate": history.history["val_loss"]}], ["Model Trained"],
+              ["epoch"], ["loss"])
 
 
 def predict_rating_with_nn(user_ids, movie_ids):
@@ -168,7 +188,6 @@ def save_obj(obj, file_path):
 def load_obj(file_path):
     with open(file_path, "rb") as f:
         return dill.load(f)
-
 
 # data_df = pd.read_csv('data/movies/tmdb_movies_data.csv')
 # movies_df = pd.read_csv('data/movies/movies.csv')
