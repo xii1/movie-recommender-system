@@ -1,5 +1,6 @@
 import pandas as pd
 from flask import Blueprint, request, jsonify
+from titlecase import titlecase
 
 from __init__ import db, cache
 from ml.recommendation import train_rating_model_with_svd, get_n_popular_movies, \
@@ -101,12 +102,13 @@ def get_top_similar_movies():
     if movie is None:
         return jsonify({'message': 'Not found movie with imdbId={}'.format(imdb_id)})
 
-    movies = get_n_similar_movies(movie['original_title'], top)
-    tmdb_movies = {m['original_title']: m
-                   for m in list(db.tmdb_movies.find({'original_title': {'$in': movies}},
+    similar_movies = get_n_similar_movies(movie['original_title'], top)
+    tmdb_movies = {titlecase(m['original_title']): m
+                   for m in list(db.tmdb_movies.find({'original_title': {'$regex': '|'.join(similar_movies),
+                                                                         '$options': 'i'}},
                                                      {'_id': False, 'id': True, 'original_title': True,
                                                       'genres': True, 'imdb_id': True}))}
-    movies = [tmdb_movies[k] for k in movies]
+    movies = [tmdb_movies[k] for k in similar_movies]
 
     return jsonify(movies)
 
@@ -211,7 +213,7 @@ def get_top_recommended_movies_with_watched_movie(user_id):
         return jsonify({'message': 'Not found movie with imdbId={}'.format(imdb_id)})
 
     similar_movies = get_n_similar_movies(movie['original_title'], 5 * top)
-    movies = list(db.movies.find({'title': {'$regex': '|'.join(similar_movies)}}, {'_id': False}))
+    movies = list(db.movies.find({'title': {'$regex': '|'.join(similar_movies), '$options': 'i'}}, {'_id': False}))
     data = pd.DataFrame(movies)
 
     if data.size == 0:
