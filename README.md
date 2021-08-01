@@ -78,6 +78,11 @@ http://localhost:8080/recommender/predict/rating?userId=<number>&movieId=<number
 http://localhost:8080/recommender/user/<user_id>?genres=<string>&top=<number>&watched=[true|false]
 ```
 
+- Fit again TF-IDF matrix and movie indices when add new movie data
+```
+http://localhost:8080/recommender/train/tfidf
+```
+
 - Train again predicted rating model when add new rating data
 ```
 http://localhost:8080/recommender/train/rating

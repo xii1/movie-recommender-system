@@ -66,7 +66,7 @@ def calc_weighted_rating(movie, m, c):
 
 # Content based filtering: propose list of the most similar movies based on cosine similarity calculation
 # between the words or text in vector form (use TF-IDF)
-def calc_cosine_similar_matrix(data):
+def calc_tfidf_matrix(data):
     data['original_title'] = data['original_title'].str.strip()
     data['original_title'] = data['original_title'].str.lower()
     data['overview'] = data['overview'].fillna('')
@@ -248,7 +248,7 @@ def load_obj(file_path):
 # movies_df = pd.read_csv('data/movies/movies.csv')
 # ratings_df = pd.read_csv('data/movies/ratings.csv')
 
-# calc_cosine_similar_matrix(data_df)
+# calc_tfidf_matrix(data_df)
 # print(get_n_similar_movies('    jurassic world    ', 5))
 
 # print(train_rating_model_with_svd(ratings_df))

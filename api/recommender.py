@@ -4,7 +4,7 @@ from flask import Blueprint, request, jsonify
 from __init__ import db, cache
 from ml.recommendation import train_rating_model_with_svd, get_n_popular_movies, \
     get_n_rating_movies, predict_rating_with_svd, get_n_recommended_movies_for_user, predict_rating_with_nn, \
-    get_n_trending_movies, get_n_similar_movies
+    get_n_trending_movies, get_n_similar_movies, calc_tfidf_matrix
 
 recommender = Blueprint('recommender', __name__)
 
@@ -98,6 +98,15 @@ def get_top_similar_movies():
         top = int(top)
 
     return jsonify({'movies': get_n_similar_movies(movie, top)})
+
+
+@recommender.route('/train/tfidf', methods=['GET'])
+def fit_tfidf_matrix():
+    movies = list(db.tmdb_movies.find({}, {'_id': False}))
+    data = pd.DataFrame(movies)
+    calc_tfidf_matrix(data)
+
+    return jsonify({'message': 'Done'})
 
 
 @recommender.route('/predict/rating', methods=['GET'])
