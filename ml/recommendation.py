@@ -8,6 +8,7 @@ from sklearn.preprocessing import MinMaxScaler, LabelEncoder
 from surprise import SVD, Reader, Dataset
 from surprise.model_selection import GridSearchCV
 from tensorflow.keras import layers, activations, models, optimizers, losses
+from titlecase import titlecase
 
 TFIDF_MATRIX_FILE = 'trained_models/recommendation/tfidf_matrix.pkl'
 MOVIE_INDICES_FILE = 'trained_models/recommendation/movie_indices.pkl'
@@ -101,7 +102,7 @@ def get_n_similar_movies(movie, n):
 
     # Get top n the movie indices exclude first movie (the input movie)
     indices = [i[0] for i in similar_scores[1:(n + 1)]]
-    similar_movies = [movie_indices.keys().values[i].title() for i in indices]
+    similar_movies = [titlecase(movie_indices.keys().values[i]) for i in indices]
 
     return similar_movies
 

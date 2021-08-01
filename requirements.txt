@@ -11,3 +11,4 @@ scikit-learn
 scikit-surprise
 tensorflow
 dill
+titlecase

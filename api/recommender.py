@@ -97,7 +97,14 @@ def get_top_similar_movies():
     else:
         top = int(top)
 
-    return jsonify({'movies': get_n_similar_movies(movie, top)})
+    movies = get_n_similar_movies(movie, top)
+    tmdb_movies = {m['original_title']: m
+                   for m in list(db.tmdb_movies.find({'original_title': {'$in': movies}},
+                                                     {'_id': False, 'id': True, 'original_title': True,
+                                                      'genres': True, 'imdb_id': True}))}
+    movies = [tmdb_movies[k] for k in movies]
+
+    return jsonify(movies)
 
 
 @recommender.route('/train/tfidf', methods=['GET'])
