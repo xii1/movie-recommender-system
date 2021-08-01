@@ -78,6 +78,11 @@ http://localhost:8080/recommender/predict/rating?userId=<number>&movieId=<number
 http://localhost:8080/recommender/user/<user_id>?genres=<string>&top=<number>&watched=[true|false]
 ```
 
+- Get list of recommended movies for a user if the user have watched the movie (default: top=10)
+```
+http://localhost:8080/recommender/user/<user_id>/watched?movie=<string>&top=<number>
+```
+
 - Fit again TF-IDF matrix and movie indices when add new movie data
 ```
 http://localhost:8080/recommender/train/tfidf

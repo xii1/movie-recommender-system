@@ -150,7 +150,6 @@ def train_rating_model():
 @cache.cached(timeout=300, query_string=True)
 def get_top_recommended_movies(user_id):
     user_id = int(user_id)
-
     genres = request.args.get('genres')
     top = request.args.get('top')
     watched = request.args.get('watched')
@@ -171,6 +170,40 @@ def get_top_recommended_movies(user_id):
 
     query = {'$and': [genres_query, unwatched_movies_query]}
     movies = list(db.movies.find(query, {'_id': False}))
+    data = pd.DataFrame(movies)
+
+    if data.size == 0:
+        return jsonify([])
+
+    recommended_movies = get_n_recommended_movies_for_user(user_id, top, data)
+
+    # map imdbId by links
+    imdb = list(db.links.find({'movieId': {'$in': list(recommended_movies['movieId'])}}))
+    imdb = {i['movieId']: i['imdbId'] for i in imdb}
+
+    recommended_movies['imdb_id'] = recommended_movies.apply(lambda m: imdb[m['movieId']], axis=1)
+
+    return recommended_movies.to_json(orient='records')
+
+
+# Hybrid recommendation based on the watched movie of a user
+@recommender.route('/user/<user_id>/watched', methods=['GET'])
+@cache.cached(timeout=300, query_string=True)
+def get_top_recommended_movies_with_watched_movie(user_id):
+    user_id = int(user_id)
+    movie = request.args.get('movie')
+    top = request.args.get('top')
+
+    if not movie:
+        return jsonify({'message': 'Missing movie'})
+
+    if not top:
+        top = N_TOP_DEFAULT
+    else:
+        top = int(top)
+
+    similar_movies = get_n_similar_movies(movie, 5 * top)
+    movies = list(db.movies.find({'title': {'$regex': '|'.join(similar_movies)}}, {'_id': False}))
     data = pd.DataFrame(movies)
 
     if data.size == 0:
