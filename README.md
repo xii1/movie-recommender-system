@@ -65,7 +65,7 @@ http://localhost:8080/recommender/trend/rating?genres=<string>&top=<number>
 
 - Get list of the most similar movies for a movie (default: top=10)
 ```
-http://localhost:8080/recommender/similar?movie=<string>&top=<number>
+http://localhost:8080/recommender/similar?imdbId=<string>&top=<number>
 ```
 
 - Get predicted rating of a user for a movie
@@ -80,7 +80,7 @@ http://localhost:8080/recommender/user/<user_id>?genres=<string>&top=<number>&wa
 
 - Get list of recommended movies for a user if the user have watched the movie (default: top=10)
 ```
-http://localhost:8080/recommender/user/<user_id>/watched?movie=<string>&top=<number>
+http://localhost:8080/recommender/user/<user_id>/watched?imdbId=<string>&top=<number>
 ```
 
 - Fit again TF-IDF matrix and movie indices when add new movie data

@@ -86,18 +86,22 @@ def get_top_rating_movies():
 @recommender.route('/similar', methods=['GET'])
 @cache.cached(timeout=300, query_string=True)
 def get_top_similar_movies():
-    movie = request.args.get('movie')
+    imdb_id = request.args.get('imdbId')
     top = request.args.get('top')
 
-    if not movie:
-        return jsonify({'message': 'Missing movie'})
+    if not imdb_id:
+        return jsonify({'message': 'Missing imdbId'})
 
     if not top:
         top = N_TOP_DEFAULT
     else:
         top = int(top)
 
-    movies = get_n_similar_movies(movie, top)
+    movie = db.tmdb_movies.find_one({'imdb_id': imdb_id}, {'_id': False, 'original_title': True})
+    if movie is None:
+        return jsonify({'message': 'Not found movie with imdbId={}'.format(imdb_id)})
+
+    movies = get_n_similar_movies(movie['original_title'], top)
     tmdb_movies = {m['original_title']: m
                    for m in list(db.tmdb_movies.find({'original_title': {'$in': movies}},
                                                      {'_id': False, 'id': True, 'original_title': True,
@@ -191,18 +195,22 @@ def get_top_recommended_movies(user_id):
 @cache.cached(timeout=300, query_string=True)
 def get_top_recommended_movies_with_watched_movie(user_id):
     user_id = int(user_id)
-    movie = request.args.get('movie')
+    imdb_id = request.args.get('imdbId')
     top = request.args.get('top')
 
-    if not movie:
-        return jsonify({'message': 'Missing movie'})
+    if not imdb_id:
+        return jsonify({'message': 'Missing imdbId'})
 
     if not top:
         top = N_TOP_DEFAULT
     else:
         top = int(top)
 
-    similar_movies = get_n_similar_movies(movie, 5 * top)
+    movie = db.tmdb_movies.find_one({'imdb_id': imdb_id}, {'_id': False, 'original_title': True})
+    if movie is None:
+        return jsonify({'message': 'Not found movie with imdbId={}'.format(imdb_id)})
+
+    similar_movies = get_n_similar_movies(movie['original_title'], 5 * top)
     movies = list(db.movies.find({'title': {'$regex': '|'.join(similar_movies)}}, {'_id': False}))
     data = pd.DataFrame(movies)
 
