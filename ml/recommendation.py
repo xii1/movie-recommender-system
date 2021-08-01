@@ -2,11 +2,15 @@ import dill
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import linear_kernel
 from sklearn.preprocessing import MinMaxScaler, LabelEncoder
 from surprise import SVD, Reader, Dataset
 from surprise.model_selection import GridSearchCV
 from tensorflow.keras import layers, activations, models, optimizers, losses
-from datetime import date
+
+TFIDF_MATRIX_FILE = 'trained_models/recommendation/tfidf_matrix.pkl'
+MOVIE_INDICES_FILE = 'trained_models/recommendation/movie_indices.pkl'
 
 PREDICTED_RATING_SVD_MODEL_FILE = 'trained_models/recommendation/predicted_rating_svd.pkl'
 QUANTILES_THRESHOLD = 0.95
@@ -18,10 +22,12 @@ PREDICTED_RATING_NN_WITH_EMBEDDING_MOVIE_ENCODER_FILE = 'trained_models/recommen
 N_FACTORS = 10
 
 
+# Demographic: trending based on popularity
 def get_n_popular_movies(data, n):
     return data.nlargest(n, 'popularity')[['id', 'original_title', 'genres', 'popularity', 'imdb_id']]
 
 
+# Demographic: trending now based on IMDB weighted rating score
 def get_n_trending_movies(data, n):
     m = data['vote_count'].quantile(QUANTILES_THRESHOLD)
     c = data['vote_average'].mean()
@@ -40,6 +46,7 @@ def get_n_trending_movies(data, n):
         ['id', 'original_title', 'genres', 'vote_count', 'vote_average', 'rating_score', 'imdb_id', 'release_year']]
 
 
+# Demographic: trending based on IMDB weighted rating score
 def get_n_rating_movies(data, n):
     m = data['vote_count'].quantile(QUANTILES_THRESHOLD)
     c = data['vote_average'].mean()
@@ -57,6 +64,50 @@ def calc_weighted_rating(movie, m, c):
     return (v * r + m * c) / (v + m)
 
 
+# Content based filtering: propose list of the most similar movies based on cosine similarity calculation
+# between the words or text in vector form (use TF-IDF)
+def calc_cosine_similar_matrix(data):
+    data['original_title'] = data['original_title'].str.strip()
+    data['original_title'] = data['original_title'].str.lower()
+    data['overview'] = data['overview'].fillna('')
+    data['tagline'] = data['tagline'].fillna('')
+
+    # Merging overview and tittle together
+    data['description'] = data['overview'] + data['tagline']
+
+    tfidf = TfidfVectorizer(analyzer='word', stop_words='english')
+    tfidf_matrix = tfidf.fit_transform(data['description'])
+
+    # construct a reverse map of indices and movie original title
+    movie_indices = pd.Series(data.index, index=data['original_title']).drop_duplicates()
+
+    save_obj(tfidf_matrix, TFIDF_MATRIX_FILE)  # save tfidf matrix to file
+    save_obj(movie_indices, MOVIE_INDICES_FILE)  # save movie indices to file
+
+    return
+
+
+def get_n_similar_movies(movie, n):
+    tfidf_matrix = load_obj(TFIDF_MATRIX_FILE)  # load tfidf matrix from file
+    movie_indices = load_obj(MOVIE_INDICES_FILE)  # load movie indices from file
+
+    # calculate cosine similarity
+    cosine_similar = linear_kernel(tfidf_matrix, tfidf_matrix)
+
+    # Get the pairwise similarity scores of all movies with input movie
+    # And convert it into a list of tuples and sort by similarity score descending
+    similar_scores = list(enumerate(cosine_similar[movie_indices[movie.strip().lower()]]))
+    similar_scores.sort(key=lambda x: x[1], reverse=True)
+
+    # Get top n the movie indices exclude first movie (the input movie)
+    indices = [i[0] for i in similar_scores[1:(n + 1)]]
+    similar_movies = [movie_indices.keys().values[i].title() for i in indices]
+
+    return similar_movies
+
+
+# Collaborative filtering: predict rating of user for a movie
+# based on Matrix Factorization (user-rating information) calculation (use SVD)
 def train_rating_model_with_svd(ratings):
     reader = Reader()
     data = Dataset.load_from_df(ratings[['userId', 'movieId', 'rating']], reader)
@@ -78,6 +129,8 @@ def predict_rating_with_svd(user_id, movie_id):
     return model.predict(user_id, movie_id).est
 
 
+# Collaborative filtering: predict rating of user for a movie
+# based on a neural collaborative filtering (use neural network with embedding layers)
 def train_rating_model_with_neural_network(ratings):
     ratings = ratings.drop(columns=['timestamp'])
 
@@ -152,6 +205,7 @@ def predict_rating_with_nn(user_ids, movie_ids):
     return mm_scaler.inverse_transform(rating).reshape(-1)
 
 
+# Collaborative filtering: recommendation based on predicted rating of user
 def get_n_recommended_movies_for_user(user_id, n, movies):
     model = load_obj(PREDICTED_RATING_SVD_MODEL_FILE)
 
@@ -189,12 +243,17 @@ def load_obj(file_path):
     with open(file_path, "rb") as f:
         return dill.load(f)
 
+
 # data_df = pd.read_csv('data/movies/tmdb_movies_data.csv')
 # movies_df = pd.read_csv('data/movies/movies.csv')
 # ratings_df = pd.read_csv('data/movies/ratings.csv')
-#
+
+# calc_cosine_similar_matrix(data_df)
+# print(get_n_similar_movies('    jurassic world    ', 5))
+
+# print(train_rating_model_with_svd(ratings_df))
 # print(predict_rating_with_svd(1, 47))
 # print(get_n_recommended_movies_for_user(2, 5, movies_df))
-#
+
 # train_rating_model_with_neural_network(ratings_df)
 # print(predict_rating_with_nn([1, 1], [1, 47]))

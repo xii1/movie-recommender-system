@@ -4,7 +4,7 @@ from flask import Blueprint, request, jsonify
 from __init__ import db, cache
 from ml.recommendation import train_rating_model_with_svd, get_n_popular_movies, \
     get_n_rating_movies, predict_rating_with_svd, get_n_recommended_movies_for_user, predict_rating_with_nn, \
-    get_n_trending_movies
+    get_n_trending_movies, get_n_similar_movies
 
 recommender = Blueprint('recommender', __name__)
 
@@ -81,6 +81,23 @@ def get_top_rating_movies():
         return jsonify([])
 
     return get_n_rating_movies(data, top).to_json(orient='records')
+
+
+@recommender.route('/similar', methods=['GET'])
+@cache.cached(timeout=300, query_string=True)
+def get_top_similar_movies():
+    movie = request.args.get('movie')
+    top = request.args.get('top')
+
+    if not movie:
+        return jsonify({'message': 'Missing movie'})
+
+    if not top:
+        top = N_TOP_DEFAULT
+    else:
+        top = int(top)
+
+    return jsonify({'movies': get_n_similar_movies(movie, top)})
 
 
 @recommender.route('/predict/rating', methods=['GET'])
