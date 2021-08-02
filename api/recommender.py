@@ -9,7 +9,7 @@ from ml.recommendation import train_rating_model_with_svd, get_n_popular_movies,
 
 recommender = Blueprint('recommender', __name__)
 
-N_TOP_DEFAULT = 10
+DEFAULT_N_TOP = 10
 
 
 @recommender.route('/trend/now', methods=['GET'])
@@ -17,15 +17,10 @@ N_TOP_DEFAULT = 10
 def get_top_trending_movies():
     query = {}
     genres = request.args.get('genres')
-    top = request.args.get('top')
+    top = int(request.args.get('top', DEFAULT_N_TOP))
 
     if genres is not None:
         query = {'genres': {'$regex': '{}'.format(genres), '$options': 'i'}}
-
-    if not top:
-        top = N_TOP_DEFAULT
-    else:
-        top = int(top)
 
     movies = list(db.tmdb_movies.find(query, {'_id': False}))
     data = pd.DataFrame(movies)
@@ -33,7 +28,7 @@ def get_top_trending_movies():
     if data.size == 0:
         return jsonify([])
 
-    return get_n_trending_movies(data, top).to_json(orient='records')
+    return jsonify(get_n_trending_movies(data, top).to_dict(orient='records'))
 
 
 @recommender.route('/trend/popular', methods=['GET'])
@@ -41,15 +36,10 @@ def get_top_trending_movies():
 def get_top_popular_movies():
     query = {}
     genres = request.args.get('genres')
-    top = request.args.get('top')
+    top = int(request.args.get('top', DEFAULT_N_TOP))
 
     if genres is not None:
         query = {'genres': {'$regex': '{}'.format(genres), '$options': 'i'}}
-
-    if not top:
-        top = N_TOP_DEFAULT
-    else:
-        top = int(top)
 
     movies = list(db.tmdb_movies.find(query, {'_id': False}))
     data = pd.DataFrame(movies)
@@ -57,7 +47,7 @@ def get_top_popular_movies():
     if data.size == 0:
         return jsonify([])
 
-    return get_n_popular_movies(data, top).to_json(orient='records')
+    return jsonify(get_n_popular_movies(data, top).to_dict(orient='records'))
 
 
 @recommender.route('/trend/rating', methods=['GET'])
@@ -65,15 +55,10 @@ def get_top_popular_movies():
 def get_top_rating_movies():
     query = {}
     genres = request.args.get('genres')
-    top = request.args.get('top')
+    top = int(request.args.get('top', DEFAULT_N_TOP))
 
     if genres is not None:
         query = {'genres': {'$regex': '{}'.format(genres), '$options': 'i'}}
-
-    if not top:
-        top = N_TOP_DEFAULT
-    else:
-        top = int(top)
 
     movies = list(db.tmdb_movies.find(query, {'_id': False}))
     data = pd.DataFrame(movies)
@@ -81,22 +66,17 @@ def get_top_rating_movies():
     if data.size == 0:
         return jsonify([])
 
-    return get_n_rating_movies(data, top).to_json(orient='records')
+    return jsonify(get_n_rating_movies(data, top).to_dict(orient='records'))
 
 
 @recommender.route('/similar', methods=['GET'])
 @cache.cached(timeout=300, query_string=True)
 def get_top_similar_movies():
     imdb_id = request.args.get('imdbId')
-    top = request.args.get('top')
+    top = int(request.args.get('top', DEFAULT_N_TOP))
 
     if not imdb_id:
         return jsonify({'message': 'Missing imdbId'})
-
-    if not top:
-        top = N_TOP_DEFAULT
-    else:
-        top = int(top)
 
     movie = db.tmdb_movies.find_one({'imdb_id': imdb_id}, {'_id': False, 'original_title': True})
     if movie is None:
@@ -157,17 +137,12 @@ def train_rating_model():
 def get_top_recommended_movies(user_id):
     user_id = int(user_id)
     genres = request.args.get('genres')
-    top = request.args.get('top')
-    watched = request.args.get('watched')
+    top = int(request.args.get('top', DEFAULT_N_TOP))
+    watched = request.args.get('watched', 'false')
 
     genres_query = {}
     if genres is not None:
         genres_query = {'genres': {'$regex': '{}'.format(genres), '$options': 'i'}}
-
-    if not top:
-        top = N_TOP_DEFAULT
-    else:
-        top = int(top)
 
     unwatched_movies_query = {}
     if not watched or watched.lower() in ('false', 'f', '0'):
@@ -189,7 +164,7 @@ def get_top_recommended_movies(user_id):
 
     recommended_movies['imdb_id'] = recommended_movies.apply(lambda m: imdb[m['movieId']], axis=1)
 
-    return recommended_movies.to_json(orient='records')
+    return jsonify(recommended_movies.to_dict(orient='records'))
 
 
 # Hybrid recommendation based on the watched movie of a user
@@ -198,15 +173,10 @@ def get_top_recommended_movies(user_id):
 def get_top_recommended_movies_with_watched_movie(user_id):
     user_id = int(user_id)
     imdb_id = request.args.get('imdbId')
-    top = request.args.get('top')
+    top = int(request.args.get('top', DEFAULT_N_TOP))
 
     if not imdb_id:
         return jsonify({'message': 'Missing imdbId'})
-
-    if not top:
-        top = N_TOP_DEFAULT
-    else:
-        top = int(top)
 
     movie = db.tmdb_movies.find_one({'imdb_id': imdb_id}, {'_id': False, 'original_title': True})
     if movie is None:
@@ -227,4 +197,4 @@ def get_top_recommended_movies_with_watched_movie(user_id):
 
     recommended_movies['imdb_id'] = recommended_movies.apply(lambda m: imdb[m['movieId']], axis=1)
 
-    return recommended_movies.to_json(orient='records')
+    return jsonify(recommended_movies.to_dict(orient='records'))
