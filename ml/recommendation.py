@@ -69,18 +69,18 @@ def calc_weighted_rating(movie, m, c):
 # between the words or text in vector form (use TF-IDF)
 def calc_tfidf_matrix(data):
     data['original_title'] = data['original_title'].str.strip()
-    data['original_title'] = data['original_title'].str.lower()
     data['overview'] = data['overview'].fillna('')
     data['tagline'] = data['tagline'].fillna('')
 
-    # Merging overview and tittle together
-    data['description'] = data['overview'] + data['tagline']
+    # Merging original title, overview and tagline together
+    data['description'] = data['original_title'] + data['overview'] + data['tagline']
 
     tfidf = TfidfVectorizer(analyzer='word', stop_words='english')
     tfidf_matrix = tfidf.fit_transform(data['description'])
 
     # construct a reverse map of indices and movie original title
-    movie_indices = pd.Series(data.index, index=data['original_title']).drop_duplicates()
+    data['title'] = data['original_title'].str.lower()
+    movie_indices = pd.Series(data.index, index=data['title']).drop_duplicates()
 
     save_obj(tfidf_matrix, TFIDF_MATRIX_FILE)  # save tfidf matrix to file
     save_obj(movie_indices, MOVIE_INDICES_FILE)  # save movie indices to file
@@ -250,7 +250,7 @@ def load_obj(file_path):
 # ratings_df = pd.read_csv('data/movies/ratings.csv')
 
 # calc_tfidf_matrix(data_df)
-# print(get_n_similar_movies('    jurassic world    ', 5))
+# print(get_n_similar_movies('    jurassic world    ', 10))
 
 # print(train_rating_model_with_svd(ratings_df))
 # print(predict_rating_with_svd(1, 47))
