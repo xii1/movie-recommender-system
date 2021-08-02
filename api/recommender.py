@@ -160,7 +160,7 @@ def get_top_recommended_movies(user_id):
 
     # map imdbId by links
     imdb = list(db.links.find({'movieId': {'$in': list(recommended_movies['movieId'])}}))
-    imdb = {i['movieId']: i['imdbId'] for i in imdb}
+    imdb = {i['movieId']: i['tmdbId'] for i in imdb}
 
     recommended_movies['imdb_id'] = recommended_movies.apply(lambda m: imdb[m['movieId']], axis=1)
 
@@ -193,7 +193,7 @@ def get_top_recommended_movies_with_watched_movie(user_id):
 
     # map imdbId by links
     imdb = list(db.links.find({'movieId': {'$in': list(recommended_movies['movieId'])}}))
-    imdb = {i['movieId']: i['imdbId'] for i in imdb}
+    imdb = {i['movieId']: i['tmdbId'] for i in imdb}
 
     recommended_movies['imdb_id'] = recommended_movies.apply(lambda m: imdb[m['movieId']], axis=1)
 
