@@ -43,9 +43,9 @@ These instructions will get you building and running the project on your local m
 http://localhost:8080/user/list
 ```
 
-- Get list of all watched movies of a user (default: all genres)
+- Get list of all watched movies of a user with pagination (default: all genres, page=1)
 ```
-http://localhost:8080/user/<user_id>/watched?genres=<string>
+http://localhost:8080/user/<user_id>/watched?genres=<string>&page=<number>
 ```
 
 - Get list of trending movies in recent 3 years and older than 3 years based on popularity (default: top=10, all genres)

@@ -1,9 +1,13 @@
 import pandas as pd
 from flask import Blueprint, jsonify, request
+from flask_pymongo import DESCENDING
 
 from __init__ import db, cache
 
 user = Blueprint('user', __name__)
+
+DEFAULT_PAGE = 1
+DEFAULT_NUM_PER_PAGE = 10
 
 
 @user.route('/list', methods=['GET'])
@@ -17,6 +21,8 @@ def get_all_users():
 @cache.cached(timeout=300, query_string=True)
 def get_watched_movies(user_id):
     user_id = int(user_id)
+    page = int(request.args.get('page', DEFAULT_PAGE))
+    num_per_page = int(request.args.get('numPerPage', DEFAULT_NUM_PER_PAGE))
 
     genres = request.args.get('genres')
 
@@ -28,11 +34,22 @@ def get_watched_movies(user_id):
     watched_movies_query = {'movieId': {'$in': watched_movies}}
 
     query = {'$and': [genres_query, watched_movies_query]}
-    movies = list(db.movies.find(query, {'_id': False}))
-    data = pd.DataFrame(movies)
 
-    if data.size == 0:
-        return jsonify([])
+    total = db.movies.find(query).count()
+
+    if total == 0:
+        return jsonify({'total': 0, 'total_page': 0, 'movies': []})
+
+    if total % num_per_page > 0:
+        total_page = int(total / num_per_page) + 1
+    else:
+        total_page = int(total / num_per_page)
+
+    movies = list(db.movies.find(query, {'_id': False})
+                  .sort([('_id', DESCENDING)])
+                  .skip(num_per_page * (page - 1))
+                  .limit(num_per_page))
+    data = pd.DataFrame(movies)
 
     # map imdbId by links
     imdb = list(db.links.find({'movieId': {'$in': list(data['movieId'])}}))
@@ -40,4 +57,4 @@ def get_watched_movies(user_id):
 
     data['imdb_id'] = data.apply(lambda m: imdb[m['movieId']], axis=1)
 
-    return data.to_json(orient='records')
+    return jsonify({'total': total, 'total_page': total_page, 'page': page, 'movies': data.to_dict(orient='records')})
