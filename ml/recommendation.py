@@ -1,3 +1,4 @@
+import time
 import dill
 import numpy as np
 import pandas as pd
@@ -8,6 +9,7 @@ from sklearn.preprocessing import MinMaxScaler, LabelEncoder
 from surprise import SVD, Reader, Dataset
 from surprise.model_selection import GridSearchCV
 from tensorflow.keras import layers, activations, models, optimizers, losses
+from tensorflow.keras.regularizers import l2
 from titlecase import titlecase
 
 TFIDF_MATRIX_FILE = 'trained_models/recommendation/tfidf_matrix.pkl'
@@ -15,8 +17,8 @@ MOVIE_INDICES_FILE = 'trained_models/recommendation/movie_indices.pkl'
 
 PREDICTED_RATING_SVD_MODEL_FILE = 'trained_models/recommendation/predicted_rating_svd.pkl'
 QUANTILES_THRESHOLD = 0.95
-
-PREDICTED_RATING_NN_WITH_EMBEDDING_MODEL = 'trained_models/recommendation/predicted_rating_nn_model'
+PREDICTED_RATING_NN_WITH_EMBEDDING_MODEL_1 = 'trained_models/recommendation/predicted_rating_nn_model_1'
+PREDICTED_RATING_NN_WITH_EMBEDDING_MODEL_2 = 'trained_models/recommendation/predicted_rating_nn_model_2'
 PREDICTED_RATING_NN_WITH_EMBEDDING_RATING_SCALER_FILE = 'trained_models/recommendation/predicted_rating_nn_rating_scaler.pkl'
 PREDICTED_RATING_NN_WITH_EMBEDDING_USER_ENCODER_FILE = 'trained_models/recommendation/predicted_rating_nn_user_encoder.pkl'
 PREDICTED_RATING_NN_WITH_EMBEDDING_MOVIE_ENCODER_FILE = 'trained_models/recommendation/predicted_rating_nn_movie_encoder.pkl'
@@ -111,6 +113,7 @@ def get_n_similar_movies(movie, n):
 # based on Matrix Factorization (user-rating information) calculation (use SVD)
 def train_rating_model_with_svd(ratings):
     reader = Reader()
+    print(ratings[['userId', 'movieId', 'rating']])
     data = Dataset.load_from_df(ratings[['userId', 'movieId', 'rating']], reader)
 
     params = {'n_factors': np.arange(95, 100)}
@@ -132,7 +135,32 @@ def predict_rating_with_svd(user_id, movie_id):
 
 # Collaborative filtering: predict rating of user for a movie
 # based on a neural collaborative filtering (use neural network with embedding layers)
-def train_rating_model_with_neural_network(ratings):
+
+def support_function_for_report(ratings):
+    mm_scaler = MinMaxScaler()
+    ratings[['rating']] = mm_scaler.fit_transform(ratings[['rating']])
+
+    users = ratings[['userId']].values
+    movies = ratings[['movieId']].values
+
+    # encode users
+    user_encoder = LabelEncoder()
+    users = user_encoder.fit_transform(users)
+
+    # encode movies
+    movie_encoder = LabelEncoder()
+    movies = movie_encoder.fit_transform(movies)
+
+    g = ratings.groupby('userId')['rating'].count()
+    top_users = g.sort_values(ascending=False)[:15]
+    g = ratings.groupby('movieId')['rating'].count()
+    top_movies = g.sort_values(ascending=False)[:15]
+    top_r = ratings.join(top_users, rsuffix='_r', how='inner', on='userId')
+    top_r = top_r.join(top_movies, rsuffix='_r', how='inner', on='movieId')
+
+    print(pd.crosstab(top_r.userId, top_r.movieId, top_r.rating, aggfunc=np.sum))
+
+def train_rating_model_with_neural_network_1(ratings):
     ratings = ratings.drop(columns=['timestamp'])
 
     num_users = len(ratings['userId'].unique())  # calc number of users
@@ -153,6 +181,60 @@ def train_rating_model_with_neural_network(ratings):
     # encode movies
     movie_encoder = LabelEncoder()
     movies = movie_encoder.fit_transform(movies)
+
+    # define embedding layer for user
+    user = layers.Input(shape=(1,))
+    u = layers.Embedding(num_users, N_FACTORS, embeddings_initializer='he_normal', embeddings_regularizer=l2(1e-6))(user)
+    u = layers.Reshape((N_FACTORS,))(u)
+
+    # define embedding layer for movie
+    movie = layers.Input(shape=(1,))
+    m = layers.Embedding(num_movies, N_FACTORS, embeddings_initializer='he_normal', embeddings_regularizer=l2(1e-6))(movie)
+    m = layers.Reshape((N_FACTORS,))(m)
+
+    # computing the dot product between a user vector and a movie vector to get a predicted rating
+    output = layers.Dot(axes=1)([u, m])
+
+    # create model
+    model = models.Model(inputs=[user, movie], outputs=output)
+    model.compile(loss='mean_squared_error', optimizer=optimizers.Adam())
+
+    # train model
+    history = model.fit([users, movies], ratings, validation_split=0.2, batch_size=32, epochs=20, verbose=1)
+    model.summary()
+
+    # save all to file
+    model.save(PREDICTED_RATING_NN_WITH_EMBEDDING_MODEL_1)
+    save_obj(mm_scaler, PREDICTED_RATING_NN_WITH_EMBEDDING_RATING_SCALER_FILE)
+    save_obj(user_encoder, PREDICTED_RATING_NN_WITH_EMBEDDING_USER_ENCODER_FILE)
+    save_obj(movie_encoder, PREDICTED_RATING_NN_WITH_EMBEDDING_MOVIE_ENCODER_FILE)
+
+    # visualization train loss / validate loss
+    visualize([{"train": history.history["loss"], "validate": history.history["val_loss"]}], ["Model Trained"],
+              ["epoch"], ["loss"])
+
+def train_rating_model_with_neural_network_2(ratings, lr, epoch):
+    ratings = ratings.drop(columns=['timestamp'])
+
+    num_users = len(ratings['userId'].unique())  # calc number of users
+    num_movies = len(ratings['movieId'].unique())  # calc number of movies
+
+    # normalize data
+    mm_scaler = MinMaxScaler()
+    ratings[['rating']] = mm_scaler.fit_transform(ratings[['rating']])
+
+    users = ratings[['userId']].values
+    movies = ratings[['movieId']].values
+    ratings = ratings[['rating']].values.reshape(-1)
+
+    # encode users
+    user_encoder = LabelEncoder()
+    users = user_encoder.fit_transform(users)
+
+    # encode movies
+    movie_encoder = LabelEncoder()
+    movies = movie_encoder.fit_transform(movies)
+
 
     # define embedding layer for user
     user_input = layers.Input(shape=(1,))
@@ -177,14 +259,17 @@ def train_rating_model_with_neural_network(ratings):
 
     # create model
     model = models.Model(inputs=[user_input, movie_input], outputs=output)
-    model.compile(optimizer=optimizers.Adam(), loss=losses.mean_squared_error)
+    model.compile(optimizer=optimizers.Adam(learning_rate=lr), loss=losses.mean_squared_error)
 
     # train model
-    history = model.fit([users, movies], ratings, validation_split=0.2, batch_size=32, epochs=20, verbose=1)
+    print("TRAIN START", time.time())
+    history = model.fit([users, movies], ratings, validation_split=0.2, batch_size=32, epochs=epoch, verbose=1)
+    print("TRAIN STOP", time.time())
+    # print(history.history)
     model.summary()
 
     # save all to file
-    model.save(PREDICTED_RATING_NN_WITH_EMBEDDING_MODEL)
+    model.save(PREDICTED_RATING_NN_WITH_EMBEDDING_MODEL_2)
     save_obj(mm_scaler, PREDICTED_RATING_NN_WITH_EMBEDDING_RATING_SCALER_FILE)
     save_obj(user_encoder, PREDICTED_RATING_NN_WITH_EMBEDDING_USER_ENCODER_FILE)
     save_obj(movie_encoder, PREDICTED_RATING_NN_WITH_EMBEDDING_MOVIE_ENCODER_FILE)
@@ -196,7 +281,7 @@ def train_rating_model_with_neural_network(ratings):
 
 def predict_rating_with_nn(user_ids, movie_ids):
     # load all from file
-    model = models.load_model(PREDICTED_RATING_NN_WITH_EMBEDDING_MODEL)
+    model = models.load_model(PREDICTED_RATING_NN_WITH_EMBEDDING_MODEL_2)
     mm_scaler = load_obj(PREDICTED_RATING_NN_WITH_EMBEDDING_RATING_SCALER_FILE)
     user_encoder = load_obj(PREDICTED_RATING_NN_WITH_EMBEDDING_USER_ENCODER_FILE)
     movie_encoder = load_obj(PREDICTED_RATING_NN_WITH_EMBEDDING_MOVIE_ENCODER_FILE)
@@ -245,9 +330,12 @@ def load_obj(file_path):
         return dill.load(f)
 
 
-# data_df = pd.read_csv('data/movies/tmdb_movies_data.csv')
-# movies_df = pd.read_csv('data/movies/movies.csv')
-# ratings_df = pd.read_csv('data/movies/ratings.csv')
+data_df = pd.read_csv('data/movies/tmdb_movies_data.csv')
+movies_df = pd.read_csv('data/movies/movies.csv')
+ratings_df = pd.read_csv('data/movies/ratings.csv')
+#
+# print(movies_df.describe())
+# print(ratings_df.describe())
 
 # calc_tfidf_matrix(data_df)
 # print(get_n_similar_movies('    jurassic world    ', 10))
@@ -256,5 +344,10 @@ def load_obj(file_path):
 # print(predict_rating_with_svd(1, 47))
 # print(get_n_recommended_movies_for_user(2, 5, movies_df))
 
-# train_rating_model_with_neural_network(ratings_df)
+
+# train_rating_model_with_neural_network_2(ratings_df, 0.01, 20)
+# train_rating_model_with_neural_network_2(ratings_df, 0.001, 20)
+# train_rating_model_with_neural_network_2(ratings_df, 0.0001, 20)
+train_rating_model_with_neural_network_2(ratings_df, 0.0001, 6)
+
 # print(predict_rating_with_nn([1, 1], [1, 47]))
