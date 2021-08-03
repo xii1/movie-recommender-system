@@ -1,6 +1,6 @@
 # Movie Recommender System
 
-Movie Recommender System is a REST API application which written by Python (using Flask, UWSGI, MongoDB, Redis, nginx, sklearn).\
+Movie Recommender System is a REST API application which written by Python (using Flask, uWSGI, MongoDB, Redis, Nginx, Sklearn, Keras, Tensorflow).\
 Build a movie recommender system utilizing various techniques and serve it via a Restful API. These techniques include: Demographic, content based similarity, and collaborative filtering.\
 Objective is to learn recommender systems techniques, and practice embedding and MLOps.
 
@@ -95,7 +95,7 @@ http://localhost:8080/recommender/train/rating
 
 - Clear cache APIs
 ```
-http://localhost:8080/caching/delete/<:key>
+http://localhost:8080/caching/delete/<key>
 http://localhost:8080/caching/clear
 ```
 
