@@ -229,8 +229,8 @@ def visualize(data, titles, xlabels, ylabels):
             axes[i, 0].plot(data[i][s], label=s)
 
         axes[i, 0].legend(loc="best")
+        axes[i, 0].grid()
 
-    plt.grid()
     plt.tight_layout()
     plt.show()
 
